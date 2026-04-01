@@ -9,6 +9,44 @@ require 'vendor/autoload.php';
 $client = new MongoDB\Client("mongodb://localhost:27017");
 $db = $client->shop_mongo;
 
+// ---------------------------------------------------------------
+// Fonction getAll() — retourne les produits avec métadonnées de pagination
+// ---------------------------------------------------------------
+function getAll(MongoDB\Database $db, int $page = 1, int $perPage = 10): array
+{
+    $skip  = ($page - 1) * $perPage;
+    $total = $db->products->countDocuments();
+
+    $data = $db->products->find(
+        [],
+        [
+            'projection' => ['name' => 1, 'price' => 1, 'category' => 1, '_id' => 0],
+            'sort'       => ['name' => 1],
+            'skip'       => $skip,
+            'limit'      => $perPage,
+        ]
+    )->toArray();
+
+    return [
+        'data'       => $data,
+        'total'      => $total,
+        'totalPages' => (int) ceil($total / $perPage),
+        'page'       => $page,
+        'perPage'    => $perPage,
+    ];
+}
+
+// Exemple d'appel — page 1, 10 produits par page
+echo "=== getAll() — page 1 ===\n";
+$result = getAll($db, page: 1, perPage: 10);
+echo "Total produits : {$result['total']}\n";
+echo "Total pages    : {$result['totalPages']}\n";
+echo "Page courante  : {$result['page']}\n";
+foreach ($result['data'] as $product) {
+    echo "  " . $product['name'] . " — " . number_format($product['price'], 2) . "€ ({$product['category']})\n";
+}
+echo "\n";
+
 // D.1.1 — Les 5 produits les plus chers (nom et prix)
 echo "=== 5 produits les plus chers ===\n";
 $products = $db->products->find(
